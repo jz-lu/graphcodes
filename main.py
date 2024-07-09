@@ -21,7 +21,8 @@ Basic usage:
 (4) Run and see what the distance is!
 """
 
-ADJ_MAT = adj_simple(5)
+#ADJ_MAT = adj_simple(5)
+ADJ_MAT = adj_covered_icosahedron(2)
 INPUTS = [0]
 
 d = find_distance(ADJ_MAT, INPUTS)

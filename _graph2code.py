@@ -85,62 +85,95 @@ def solve_F2_eqn(A, b):
 
     return x
 
+#def is_stabilizer_signed(g, Stab):
+#    """
+#    Check if a given Pauli string is a stabilizer of a stabilizer group.
+#
+#    Input:
+#        * g: Pauli string, in symplectic representation (sign | Z's | X's), 2n + 1 bits.
+#        * Stab: stabilizer tableau, in symplectic representation (n-k) x (2n + 1) binary matrix.
+#
+#    Returns:
+#        * 0 if g in Stab, 1 if g not in Stab due to Gaussian elimination unsolvability
+#        * 2 if -g in Stab but g not in Stab
+#    
+#    Warnings:
+#        * This will not work if the stabilizer tableau has non-independent entries. They
+#           must be real generators.
+#    """
+#    Stab = np.array(Stab, dtype=np.uint8)
+#    g = np.array(g, dtype=np.uint8)
+#
+#    # Drop the signs 
+#    g_sgn = g[0]; g_op = g[1:]
+#    n = g_op.shape[0] // 2 # number of physical qubits
+#    Stab_sgns = Stab[:,0]; Stab_ops = Stab[:,1:]
+#    assert len(g.shape) == 1
+#    assert g_op.shape[0] == Stab_ops.shape[1]
+#    assert g_op.shape[0] % 2 == 0
+#    assert Stab_ops.shape[0] < Stab_ops.shape[1] # n-k < n
+#
+#    # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
+#    x = solve_F2_eqn(Stab_ops.T, g_op)
+#    if x is None:
+#        # print("Not GEBS-solvable")
+#        return 1 # sign-free unsolvability => unsolvability
+#    
+#    # Test for signed solvability, by explicitly multiplying the stabilizers together
+#    assert np.all(np.mod(np.dot(Stab_ops.T, x), 2) == g_op)
+#    running_sgn = 0 # define a running product, which is initialized to the identity, symplectic
+#    running_Z = np.zeros(n, dtype=np.uint8)
+#    running_X = np.zeros(n, dtype=np.uint8) # running Z and X strings, symplectic
+#    for i, bit in enumerate(x):
+#        if bit == 1:
+#            new_Z_ops = Stab_ops[i,:n]
+#            new_X_ops = Stab_ops[i,n:]
+#            running_sgn = (running_sgn + Stab_sgns[i] + np.mod(np.dot(new_Z_ops, running_X), 2)) % 2
+#            running_Z = np.mod(running_Z + new_Z_ops, 2)
+#            running_X = np.mod(running_X + new_X_ops, 2)
+#    
+#    solution_op = np.hstack((running_Z, running_X), dtype=np.uint8)
+#    solution_sgn = running_sgn
+#
+#    assert np.all(solution_op == g_op), f"Solution {solution_op} != g {g_op}"
+#    if g_sgn == solution_sgn:
+#        return 0 # correctly solved
+#    else:
+#        # print("Sign doesn't match")
+#        return 2 # sign doesn't match
+
 def is_stabilizer(g, Stab):
     """
     Check if a given Pauli string is a stabilizer of a stabilizer group.
 
     Input:
-        * g: Pauli string, in symplectic representation (sign | Z's | X's), 2n + 1 bits.
-        * Stab: stabilizer tableau, in symplectic representation (n-k) x (2n + 1) binary matrix.
+        * g: Pauli string, in symplectic representation (Z's | X's), 2n bits.
+        * Stab: stabilizer tableau, in symplectic representation (n-k) x 2n binary matrix.
 
     Returns:
-        * 0 if g in Stab, 1 if g not in Stab due to Gaussian elimination unsolvability
-        * 2 if -g in Stab but g not in Stab
+        * True if g in Stab, False if g not in Stab due to Gaussian elimination unsolvability
     
     Warnings:
         * This will not work if the stabilizer tableau has non-independent entries. They
            must be real generators.
+        * The generators and inputs are unsigned, so it could be the case that -g is
+        in Stab and g is not, yet this will return True.
     """
     Stab = np.array(Stab, dtype=np.uint8)
     g = np.array(g, dtype=np.uint8)
 
-    # Drop the signs 
-    g_sgn = g[0]; g_op = g[1:]
-    n = g_op.shape[0] // 2 # number of physical qubits
-    Stab_sgns = Stab[:,0]; Stab_ops = Stab[:,1:]
+    n = g.shape[0] // 2 # number of physical qubits
     assert len(g.shape) == 1
-    assert g_op.shape[0] == Stab_ops.shape[1]
-    assert g_op.shape[0] % 2 == 0
-    assert Stab_ops.shape[0] < Stab_ops.shape[1] # n-k < n
+    assert g.shape[0] == Stab.shape[1]
+    assert g.shape[0] % 2 == 0
+    assert Stab.shape[0] < Stab.shape[1] # n-k < n
 
     # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
-    x = solve_F2_eqn(Stab_ops.T, g_op)
+    x = solve_F2_eqn(Stab.T, g)
     if x is None:
         # print("Not GEBS-solvable")
-        return 1 # sign-free unsolvability => unsolvability
-    
-    # Test for signed solvability, by explicitly multiplying the stabilizers together
-    assert np.all(np.mod(np.dot(Stab_ops.T, x), 2) == g_op)
-    running_sgn = 0 # define a running product, which is initialized to the identity, symplectic
-    running_Z = np.zeros(n, dtype=np.uint8)
-    running_X = np.zeros(n, dtype=np.uint8) # running Z and X strings, symplectic
-    for i, bit in enumerate(x):
-        if bit == 1:
-            new_Z_ops = Stab_ops[i,:n]
-            new_X_ops = Stab_ops[i,n:]
-            running_sgn = (running_sgn + Stab_sgns[i] + np.mod(np.dot(new_Z_ops, running_X), 2)) % 2
-            running_Z = np.mod(running_Z + new_Z_ops, 2)
-            running_X = np.mod(running_X + new_X_ops, 2)
-    
-    solution_op = np.hstack((running_Z, running_X), dtype=np.uint8)
-    solution_sgn = running_sgn
-
-    assert np.all(solution_op == g_op), f"Solution {solution_op} != g {g_op}"
-    if g_sgn == solution_sgn:
-        return 0 # correctly solved
-    else:
-        # print("Sign doesn't match")
-        return 2 # sign doesn't match
+        return False # sign-free unsolvability => unsolvability
+    return True
 
 #adj_mat needs to be in KLS form
 def find_distance(adj_mat, inputs):
@@ -173,40 +206,21 @@ def find_distance(adj_mat, inputs):
                     z_row = [(z_row[k] + oo_adj[pivots[j]][k]) % 2 for k in range(n)]
             z_checks += [z_row]
             x_checks += [x_row]
-    symp_stab = np.zeros((n - k, 2 * n + 1), dtype = int)
+    symp_stab = np.zeros((n - k, 2 * n), dtype = int)
     for i in range(n - k):
-        for j in range(n):
-            symp_stab[i][j + 1] = z_checks[i][j]
-            symp_stab[i][n + j + 1] = x_checks[i][j]
-        #symp_stab[0] should have sign; currently just has 0
-    for cur_dist in range(1, 5):
+        symp_stab[i][:n] = z_checks[i]
+        symp_stab[i][n:] = x_checks[i]
+    for cur_dist in range(1, 10):
+        print(f"Trying distance {cur_dist}")
         for i in it.combinations(range(n), cur_dist):
             for j in it.product(*[range(1, 4)] * cur_dist):
-                error = np.zeros(2 * n + 1, dtype = int)
+                error = np.zeros(2 * n, dtype = int)
                 for k in range(cur_dist):
-                    error[i[k] + 1] = j[k] // 2
-                    error[n + i[k] + 1] = j[k] % 2
-                result = is_stabilizer(error, symp_stab)
-                if result == 1:
-                    commutes = True
-                    for k in symp_stab:
-                        parity = True
-                        for l in range(n):
-                            p1 = k[l + 1], k[n + l + 1]
-                            p2 = error[l + 1], error[n + l + 1]
-                            if p1 != p2 and p1 != (0, 0) and p2 != (0, 0):
-                                parity = not parity
-                        if not parity:
-                            commutes = False
-                    if commutes:
+                    error[i[k]] = j[k] // 2
+                    error[i[k] + n] = j[k] % 2
+                error_swap = np.concatenate([error[n:], error[:n]])
+                if np.all(np.mod(symp_stab.dot(error_swap), 2) == 0):
+                    if not is_stabilizer(error, symp_stab):
                         print(i, j)
                         return cur_dist
     return -4
-
-#print(find_distance(fiveqc,[0]))
-#print(find_distance(sevenqc,[0]))
-#print(find_distance(nineqc,[0]))
-#print(find_distance(adj(tetrahedron),[0]))
-#print(find_distance(adj(cube),[0]))
-#print(find_distance(adj(octahedron),[0]))
-#print(find_distance(adj(dodecahedron),[0,4,7,12]))
