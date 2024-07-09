@@ -8,6 +8,7 @@ from _graph2code import find_distance
 from _code_dipyramid import adj_dipyramid
 from _code_platonic import adj_platonic, adj_covered_icosahedron
 from _code_simple import adj_simple
+from _code_lattice import adj_lattice
 
 """
 main.py: Main interface for working with graphically generated stabilizer codes.
