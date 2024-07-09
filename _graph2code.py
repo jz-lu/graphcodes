@@ -2,119 +2,20 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import itertools as it
 import numpy as np
-
-def create_dipyramid(base_polygon):
-    """
-    Create a dipyramid graph based on the number of sides in the base polygon.
-    """
-    G = nx.Graph()
-    
-    # Add base polygon vertices
-    for i in range(base_polygon):
-        G.add_node(f"B{i}")
-    
-    # Add top and bottom vertices
-    G.add_node("T")
-    G.add_node("B")
-    
-    # Connect base polygon vertices
-    for i in range(base_polygon):
-        G.add_edge(f"B{i}", f"B{(i+1)%base_polygon}")
-        
-    # Connect top and bottom vertices to all base vertices
-    for i in range(base_polygon):
-        G.add_edge("T", f"B{i}")
-        G.add_edge("B", f"B{i}")
-    
-    return G
-
-def platonic_solid_graph(solid_type):
-    if solid_type == "tetrahedron":
-        return nx.tetrahedral_graph()
-    elif solid_type == "cube":
-        return nx.cubical_graph()
-    elif solid_type == "octahedron":
-        return nx.octahedral_graph()
-    elif solid_type == "dodecahedron":
-        return nx.dodecahedral_graph()
-    elif solid_type == "icosahedron":
-        return nx.icosahedral_graph()
-    else:
-        raise ValueError("Invalid Platonic solid type")
-
 """
-Tetrahedron:
-4 vertices
-6 edges
-4 faces (triangular)
+_graph2code.py: find the distance of a code corresponding to a graph
 
-Cube (Hexahedron):
-8 vertices
-12 edges
-6 faces (square)
+The code is specified by 2 parameters: the graph `adj_mat` in adjacency matrix
+form, and a list of indices `inputs` which specify which vertices of the graph are inputs.
+From this, we implement a custom F2 linear equation solver to calculate whether a given
+physical operator is a stabilizer or not, and whether it commutes with all the stabilizers.
+If an operator is not a stabilizer (even up to a sign) BUT commutes with all stabilizers, 
+it is in the normalizer of the stabilizer group and therefore a logical operator. 
+We enumerate the physical operators in order of lowest to highest weight (arbitrarily
+for those of the same weight), and output the distance when we find the first logical operator.
 
-Octahedron:
-6 vertices
-12 edges
-8 faces (triangular)
-
-Dodecahedron:
-20 vertices
-30 edges
-12 faces (pentagonal)
-
-Icosahedron:
-12 vertices
-30 edges
-20 faces (triangular)
+The adjacency matrices of many cool graphs can be found in `_code_<x>.py` files.
 """
-
-def visualize_platonic_solid(graph):
-    plt.figure(figsize=(6, 6))
-    nx.draw(graph, with_labels=True, node_color='lightblue', node_size=500,
-            font_size=12, font_weight='bold')
-    plt.axis('off')
-    plt.show()
-
-def visualize_dipyramid(graph):
-    plt.figure(figsize=(6, 6))
-    pos = nx.spring_layout(graph, k=0.5, iterations=50)
-    nx.draw(graph, pos, with_labels=True, node_color='lightblue', 
-            node_size=500, font_size=12, font_weight='bold')
-    plt.axis('off')
-    plt.show()
-
-# Create dipyramids
-triangular_dipyramid = create_dipyramid(3)
-square_dipyramid = create_dipyramid(4)
-pentagonal_dipyramid = create_dipyramid(5)
-hexagonal_dipyramid = create_dipyramid(6)
-
-# # Visualize dipyramids
-# visualize_dipyramid(triangular_dipyramid)
-# visualize_dipyramid(square_dipyramid)
-# visualize_dipyramid(pentagonal_dipyramid)
-# visualize_dipyramid(hexagonal_dipyramid)
-
-# Instantiate platonic solids
-tetrahedron = platonic_solid_graph("tetrahedron")
-cube = platonic_solid_graph("cube")
-octahedron = platonic_solid_graph("octahedron")
-dodecahedron = platonic_solid_graph("dodecahedron")
-icosahedron = platonic_solid_graph("icosahedron")
-
-# # Example visualization
-# visualize_platonic_solid(dodecahedron)
-
-# Main idea: return the adjacency matrix
-# Here's an example on a dodecahedron
-#adj_matrix = nx.adjacency_matrix(dodecahedron).toarray()
-#print(adj_matrix)
-#visualize_platonic_solid(dodecahedron)
-
-# Here's an example on an octahedral dipyramid
-#adj_matrix = nx.adjacency_matrix(create_dipyramid(8)).toarray()
-#print(adj_matrix)
 
 def solve_F2_eqn(A, b):
     """
@@ -301,54 +202,6 @@ def find_distance(adj_mat, inputs):
                         print(i, j)
                         return cur_dist
     return -4
-
-fiveqc = [
-    [0,1,1,1,1,1],
-    [1,0,1,0,0,1],
-    [1,1,0,1,0,0],
-    [1,0,1,0,1,0],
-    [1,0,0,1,0,1],
-    [1,1,0,0,1,0]]
-sevenqc = [
-    [0,0,0,1,0,1,1,0],
-    [0,0,0,1,0,1,0,1],
-    [0,0,0,1,0,0,1,1],
-    [1,1,1,0,0,0,0,0],
-    [0,0,0,0,0,1,1,1],
-    [1,1,0,0,1,0,0,0],
-    [1,0,1,0,1,0,0,0],
-    [0,1,1,0,1,0,0,0]]
-nineqc = [
-    [0,0,0,1,0,0,1,0,0,1],
-    [0,0,0,1,0,0,0,0,0,0],
-    [0,0,0,1,0,0,0,0,0,0],
-    [1,1,1,0,0,0,0,0,0,0],
-    [0,0,0,0,0,0,1,0,0,0],
-    [0,0,0,0,0,0,1,0,0,0],
-    [0,0,0,1,1,1,0,0,0,0],
-    [0,0,0,0,0,0,0,0,0,1],
-    [0,0,0,0,0,0,0,0,0,1],
-    [0,0,0,0,0,0,1,1,1,0]]
-
-def adj(poly):
-    return nx.adjacency_matrix(poly).toarray()
-
-#visualize_platonic_solid(dodecahedron)
-
-mat = create_dipyramid(17)
-visualize_dipyramid(mat)
-print(adj(mat))
-print(find_distance(adj(mat), [0]))
-
-#print(np.array(adj(icosahedron)))
-#mat = adj(dodecahedron)
-#temp = mat[9]
-#mat[9] = mat[12].copy() 
-#mat[12] = temp.copy()
-#temp[:] = mat[:,9]
-#mat[:,9] = mat[:,12].copy() 
-#mat[:,12] = temp.copy()
-#print(np.array(mat))
 
 #print(find_distance(fiveqc,[0]))
 #print(find_distance(sevenqc,[0]))
