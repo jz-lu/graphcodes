@@ -6,7 +6,7 @@ import numpy as np
 from _graph2code import find_distance
 
 from _code_dipyramid import adj_dipyramid
-from _code_platonic import adj_platonic, adj_covered_icosahedron
+from _code_platonic import *
 from _code_simple import adj_simple
 from _code_lattice import adj_lattice
 
@@ -23,8 +23,10 @@ Basic usage:
 """
 
 #ADJ_MAT = adj_simple(5)
+#ADJ_MAT = adj_lattice(7,7,"triangular")
 ADJ_MAT = adj_covered_icosahedron(2)
-INPUTS = [0]
+INPUTS = [8,11,10+12]
+print(ADJ_MAT)
 
 d = find_distance(ADJ_MAT, INPUTS)
 print(f"The distance of your chosen graph is {d}")

@@ -182,11 +182,11 @@ def find_distance(adj_mat, inputs):
     for i, j in enumerate(inputs):
         for k, l in enumerate(inputs):
             #check if inputs connected
-            if adj_mat[j][l] == 1: return -1
+            assert adj_mat[j][l] == 0, f"Inputs {j} and {l} connected"
             #check if pivots connected
-            if adj_mat[pivots[i]][pivots[k]] == 1: return -2
+            assert adj_mat[pivots[i]][pivots[k]] == 0, f"Pivots of inputs #{i} and #{k} connected"
             #check if pivots next to other inputs
-            if i != k and adj_mat[j][pivots[k]] == 1: return -3
+            assert i == k or adj_mat[j][pivots[k]] == 0, f"Input {j} connected to pivot of input #{k}"
     outputs = [i for i in range(len(adj_mat)) if i not in inputs]
     io_adj = [[adj_mat[i][j] for j in outputs] for i in inputs]
     oo_adj = [[adj_mat[i][j] for j in outputs] for i in outputs]
@@ -223,4 +223,4 @@ def find_distance(adj_mat, inputs):
                     if not is_stabilizer(error, symp_stab):
                         print(i, j)
                         return cur_dist
-    return -4
+    return -1
