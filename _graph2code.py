@@ -17,8 +17,37 @@ for those of the same weight), and output the distance when we find the first lo
 The adjacency matrices of many cool graphs can be found in `_code_<x>.py` files.
 """
 
+def F2_row_reduce(mat):
+    """
+    Perform Gaussian elimination over F2 on matrix `A`
+    with dimensions n x r. Return None if singular.
+    """
+    rows, cols = mat.shape
+    lead = 0
+
+    for r in range(rows):
+        if lead >= cols:
+            return mat
+        i = r
+        while mat[i, lead] == 0:
+            i += 1
+            if i == rows:
+                i = r
+                lead += 1
+                if cols == lead:
+                    return mat
+        mat[[i, r]] = mat[[r, i]]
+
+        for i in range(rows):
+            if i != r:
+                mat[i] = mat[i] ^ mat[r]
+        lead += 1
+    return mat
+
+# Deprecated
 def solve_F2_eqn(A, b):
     """
+    DEPRECATED
     Solve a matrix equation Ax = b (mod 2), or return None if no solution exists.
     Commented out code solves the case if the (mod 2) is removed.
     """
@@ -33,32 +62,9 @@ def solve_F2_eqn(A, b):
     augmented = np.column_stack((A, b))
 
     # ====== BEGIN: Gaussian elimination ======
-    # Forward elimination
-    for i in range(r):
-        # Find pivot
-        pivot = np.argmax(np.abs(augmented[i:, i])) + i
-        if augmented[pivot, i] == 0:
-            print(augmented)
-            raise ValueError("Matrix is singular")
-
-        # Swap rows if needed (swap in A as well to track swapping)
-        if pivot != i:
-            augmented[[i, pivot]] = augmented[[pivot, i]]
-
-        # Eliminate below
-        for j in range(i + 1, n):
-            # factor = augmented[j, i] / augmented[i, i]
-            # augmented[j, i:] -= factor * augmented[i, i:]
-            if augmented[j, i] != 0:
-                augmented[j, i:] ^= augmented[i, i:] # XOR
-    
-    # # Normalization
-    # for i in range(n):
-    #     augmented[i] /= augmented[i,i]
-    
-    # Check that we did a successful elimination
-    for i in range(r):
-        assert np.all(augmented[i,:i] == 0) and augmented[i,i] == 1
+    augmented = F2_row_reduce(augmented, n, r)
+    if augmented is None:
+        raise ValueError("Matrix is singular")
 
     # Verify whether there is a solution or not
     for i in range(r, n):
@@ -66,7 +72,6 @@ def solve_F2_eqn(A, b):
             # print("No solution!")
             # print(augmented)
             return None # No solution
-
     # ====== END: Gaussian elimination ======
 
     # ====== BEGIN: Back substitution ======
@@ -85,62 +90,63 @@ def solve_F2_eqn(A, b):
 
     return x
 
-#def is_stabilizer_signed(g, Stab):
-#    """
-#    Check if a given Pauli string is a stabilizer of a stabilizer group.
-#
-#    Input:
-#        * g: Pauli string, in symplectic representation (sign | Z's | X's), 2n + 1 bits.
-#        * Stab: stabilizer tableau, in symplectic representation (n-k) x (2n + 1) binary matrix.
-#
-#    Returns:
-#        * 0 if g in Stab, 1 if g not in Stab due to Gaussian elimination unsolvability
-#        * 2 if -g in Stab but g not in Stab
-#    
-#    Warnings:
-#        * This will not work if the stabilizer tableau has non-independent entries. They
-#           must be real generators.
-#    """
-#    Stab = np.array(Stab, dtype=np.uint8)
-#    g = np.array(g, dtype=np.uint8)
-#
-#    # Drop the signs 
-#    g_sgn = g[0]; g_op = g[1:]
-#    n = g_op.shape[0] // 2 # number of physical qubits
-#    Stab_sgns = Stab[:,0]; Stab_ops = Stab[:,1:]
-#    assert len(g.shape) == 1
-#    assert g_op.shape[0] == Stab_ops.shape[1]
-#    assert g_op.shape[0] % 2 == 0
-#    assert Stab_ops.shape[0] < Stab_ops.shape[1] # n-k < n
-#
-#    # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
-#    x = solve_F2_eqn(Stab_ops.T, g_op)
-#    if x is None:
-#        # print("Not GEBS-solvable")
-#        return 1 # sign-free unsolvability => unsolvability
-#    
-#    # Test for signed solvability, by explicitly multiplying the stabilizers together
-#    assert np.all(np.mod(np.dot(Stab_ops.T, x), 2) == g_op)
-#    running_sgn = 0 # define a running product, which is initialized to the identity, symplectic
-#    running_Z = np.zeros(n, dtype=np.uint8)
-#    running_X = np.zeros(n, dtype=np.uint8) # running Z and X strings, symplectic
-#    for i, bit in enumerate(x):
-#        if bit == 1:
-#            new_Z_ops = Stab_ops[i,:n]
-#            new_X_ops = Stab_ops[i,n:]
-#            running_sgn = (running_sgn + Stab_sgns[i] + np.mod(np.dot(new_Z_ops, running_X), 2)) % 2
-#            running_Z = np.mod(running_Z + new_Z_ops, 2)
-#            running_X = np.mod(running_X + new_X_ops, 2)
-#    
-#    solution_op = np.hstack((running_Z, running_X), dtype=np.uint8)
-#    solution_sgn = running_sgn
-#
-#    assert np.all(solution_op == g_op), f"Solution {solution_op} != g {g_op}"
-#    if g_sgn == solution_sgn:
-#        return 0 # correctly solved
-#    else:
-#        # print("Sign doesn't match")
-#        return 2 # sign doesn't match
+"""
+def is_stabilizer_signed(g, Stab):
+   Check if a given Pauli string is a stabilizer of a stabilizer group.
+
+   Input:
+       * g: Pauli string, in symplectic representation (sign | Z's | X's), 2n + 1 bits.
+       * Stab: stabilizer tableau, in symplectic representation (n-k) x (2n + 1) binary matrix.
+
+   Returns:
+       * 0 if g in Stab, 1 if g not in Stab due to Gaussian elimination unsolvability
+       * 2 if -g in Stab but g not in Stab
+   
+   Warnings:
+       * This will not work if the stabilizer tableau has non-independent entries. They
+          must be real generators.
+
+   Stab = np.array(Stab, dtype=np.uint8)
+   g = np.array(g, dtype=np.uint8)
+
+   # Drop the signs 
+   g_sgn = g[0]; g_op = g[1:]
+   n = g_op.shape[0] // 2 # number of physical qubits
+   Stab_sgns = Stab[:,0]; Stab_ops = Stab[:,1:]
+   assert len(g.shape) == 1
+   assert g_op.shape[0] == Stab_ops.shape[1]
+   assert g_op.shape[0] % 2 == 0
+   assert Stab_ops.shape[0] < Stab_ops.shape[1] # n-k < n
+
+   # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
+   x = solve_F2_eqn(Stab_ops.T, g_op)
+   if x is None:
+       # print("Not GEBS-solvable")
+       return 1 # sign-free unsolvability => unsolvability
+   
+   # Test for signed solvability, by explicitly multiplying the stabilizers together
+   assert np.all(np.mod(np.dot(Stab_ops.T, x), 2) == g_op)
+   running_sgn = 0 # define a running product, which is initialized to the identity, symplectic
+   running_Z = np.zeros(n, dtype=np.uint8)
+   running_X = np.zeros(n, dtype=np.uint8) # running Z and X strings, symplectic
+   for i, bit in enumerate(x):
+       if bit == 1:
+           new_Z_ops = Stab_ops[i,:n]
+           new_X_ops = Stab_ops[i,n:]
+           running_sgn = (running_sgn + Stab_sgns[i] + np.mod(np.dot(new_Z_ops, running_X), 2)) % 2
+           running_Z = np.mod(running_Z + new_Z_ops, 2)
+           running_X = np.mod(running_X + new_X_ops, 2)
+   
+   solution_op = np.hstack((running_Z, running_X), dtype=np.uint8)
+   solution_sgn = running_sgn
+
+   assert np.all(solution_op == g_op), f"Solution {solution_op} != g {g_op}"
+   if g_sgn == solution_sgn:
+       return 0 # correctly solved
+   else:
+       # print("Sign doesn't match")
+       return 2 # sign doesn't match
+"""
 
 def is_stabilizer(g, Stab):
     """
@@ -169,28 +175,53 @@ def is_stabilizer(g, Stab):
     assert Stab.shape[0] < Stab.shape[1] # n-k < n
 
     # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
-    x = solve_F2_eqn(Stab.T, g)
-    if x is None:
-        # print("Not GEBS-solvable")
-        return False # sign-free unsolvability => unsolvability
-    return True
+    x = F2_row_reduce(np.vstack((Stab, g)))
+    if np.zeros_like(g) in x:
+        return True # matrix is singular => +/-g is a stabilizer
+    else:
+        False
 
 #adj_mat needs to be in KLS form
 def find_distance(adj_mat, inputs):
-    adj_mat = np.array(adj_mat).tolist()
-    pivots = [adj_mat[i].index(1) for i in inputs]
-    for i, j in enumerate(inputs):
-        for k, l in enumerate(inputs):
-            #check if inputs connected
-            if adj_mat[j][l] == 1: return -1
-            #check if pivots connected
-            if adj_mat[pivots[i]][pivots[k]] == 1: return -2
-            #check if pivots next to other inputs
-            if i != k and adj_mat[j][pivots[k]] == 1: return -3
-    outputs = [i for i in range(len(adj_mat)) if i not in inputs]
-    io_adj = [[adj_mat[i][j] for j in outputs] for i in inputs]
-    oo_adj = [[adj_mat[i][j] for j in outputs] for i in outputs]
-    pivots = [i.index(1) for i in io_adj]
+    inputs = np.array(inputs)
+    adj_mat = np.array(adj_mat)
+    outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
+
+    # Input-output adjacency matrix
+    io_adj = adj_mat[np.ix_(inputs, outputs)]
+
+    # Output-output adjacency matrix
+    oo_adj = adj_mat[np.ix_(outputs, outputs)]
+
+    # Row-reduce the IO partial adj mat
+    io_adj = F2_row_reduce(np.array(io_adj, dtype=np.uint8))
+    # pivots = [i.index(1) for i in io_adj]
+    pivots = np.argmax(io_adj == 1, axis=1)
+
+    # Loop over every pair of pivots, and perform a local complementation 
+    # if the pivots are connected.
+    for pidx1, pivot1 in enumerate(pivots):
+        for pidx2, pivot2 in enumerate(pivots):
+            if oo_adj[pivot1, pivot2] == 1: # pivots connected
+                nbr1 = oo_adj[pivot1]
+                nbr2 = oo_adj[pivot2]
+                intersection = nbr1 & nbr2
+                diff1 = nbr1 ^ intersection
+                diff2  = nbr2 ^ intersection
+                for o1 in intersection:
+                    for o2 in diff1:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                for o1 in diff1:
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+
+    # Enumerate physical operators, lowest weight first, and
+    # return the first one we find that is a logical operator.
     k = len(inputs)
     n = len(outputs)
     z_checks = []
@@ -220,7 +251,7 @@ def find_distance(adj_mat, inputs):
                     error[i[k] + n] = j[k] % 2
                 error_swap = np.concatenate([error[n:], error[:n]])
                 if np.all(np.mod(symp_stab.dot(error_swap), 2) == 0):
-                    if not is_stabilizer(error, symp_stab):
+                    if is_stabilizer(error, symp_stab):
                         print(i, j)
                         return cur_dist
-    return -4
+    return -1
