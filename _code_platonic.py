@@ -10,6 +10,7 @@ EXPORT FUNCTIONS:
 `adj_platonic`
 `adj_covered_icosahedron`
 
+BASIC INFORMATION:
 Tetrahedron:
 4 vertices
 6 edges
@@ -53,7 +54,7 @@ def platonic_solid_graph(solid_type):
     else:
         raise ValueError("Invalid Platonic solid type")
 
-def covered_icosahedron(n):
+def adj_covered_icosahedron(n):
     """
     Generate the adjacency matrix representation for the graph
     of a n-covering space of the icosahedron.
