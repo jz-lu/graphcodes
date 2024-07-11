@@ -65,11 +65,11 @@ def adj_covered_icosahedron(n):
     
     # Enumerate the special edges of an icosahedron that will be cut
     special_edges = np.array([
-        [11, 5],
-        [9, 8],
-        [11, 0],
-        [7, 8],
-        [7,0]
+        [1, 7],
+        [2, 7],
+        [2, 8],
+        [3, 8],
+        [3, 9]
     ])
     is_special = lambda vec: np.any(np.all(special_edges == vec, axis=1))
 
@@ -96,7 +96,7 @@ def adj_covered_icosahedron(n):
 
         # Populate the adjacency matrix accordingly
         for label in range(n):
-            covering_adj[i*n + label, j*n + op(label)] = 1
+            covering_adj[label * 12 + i, op(label) * 12 + j] = 1
 
     assert np.all(covering_adj == covering_adj.T), "Your adjmat isn't symmetric!"
 
@@ -122,6 +122,3 @@ if __name__ == "__main__":
     print(f"Icosahedral graph has {np.sum(adj_platonic('icosahedron')) // 2} edges")
     print(f"{n}-covered icosahedral graph has {round(np.sum(covered_icosahedron(n)) // 2)} edges")
     # visualize_platonic_solid(icosahedron)
-
-
-
