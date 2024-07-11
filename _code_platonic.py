@@ -59,7 +59,6 @@ def adj_covered_icosahedron(n):
     Generate the adjacency matrix representation for the graph
     of a n-covering space of the icosahedron.
     """
-    assert n >= 2, "n has to be at least 2"
     n_tot = 12 * n
     base_adj = adj_platonic("icosahedron")
     
