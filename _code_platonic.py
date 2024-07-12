@@ -120,5 +120,5 @@ if __name__ == "__main__":
     # Example visualization
     n = 4
     print(f"Icosahedral graph has {np.sum(adj_platonic('icosahedron')) // 2} edges")
-    print(f"{n}-covered icosahedral graph has {round(np.sum(covered_icosahedron(n)) // 2)} edges")
+    print(f"{n}-covered icosahedral graph has {round(np.sum(adj_covered_icosahedron(n)) // 2)} edges")
     # visualize_platonic_solid(icosahedron)
