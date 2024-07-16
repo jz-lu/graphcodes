@@ -29,7 +29,7 @@ def adj_simplex(k):
     # Connect output-output edges if their inner product is zero
     for i in range(2**k):
         for j in range(i+1, 2**k):
-            if bitstrings[i] @ bitstrings[j] == 0:
+            if np.mod(bitstrings[i] @ bitstrings[j], 2) == 0:
                 adj_mat[i+k, j+k] = 1
                 if i != j:
                     adj_mat[j+k, i+k] = 1
@@ -46,7 +46,7 @@ def adj_simplex(k):
     # Remove the all-zeros output node
     adj_mat = np.delete(adj_mat, k, axis=0)
     adj_mat = np.delete(adj_mat, k, axis=1)
-    print(adj_mat.shape)
+    # print(adj_mat.shape)
     
     assert np.all(adj_mat == adj_mat.T)
     return adj_mat

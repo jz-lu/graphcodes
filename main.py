@@ -10,6 +10,7 @@ from _code_platonic import *
 from _code_simple import adj_simple
 from _code_lattice import adj_lattice, adj_3lattice
 from _code_simplex import adj_simplex
+from _code_archimedes import adj_acrhimedes
 """
 main.py: Main interface for working with graphically generated stabilizer codes.
 
