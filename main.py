@@ -26,7 +26,7 @@ Basic usage:
 # INPUTS = [10+0, 6+12, 8+24, 2+24, 11+36, 5+48]
 # print(ADJ_MAT)
 
-k = 5
+k = 6
 ADJ_MAT = adj_simplex(k)
 INPUTS = list(range(k))
 
