@@ -29,9 +29,9 @@ def adj_simplex(k):
     # Connect output-output edges if their inner product is zero
     for i in range(2**k):
         for j in range(i+1, 2**k):
-            if bitstrings[i] @ bitstrings[j] == 0:
-                adj_mat[i+k, j+k] = 1
+            if (bitstrings[i] @ bitstrings[j]) % 2 == 0:
                 if i != j:
+                    adj_mat[i+k, j+k] = 1
                     adj_mat[j+k, i+k] = 1
     
     # Connect input-output edges. Each gets 2^(k-1) edges
