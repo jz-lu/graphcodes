@@ -32,6 +32,7 @@ def adj_simplex(k):
             if np.mod(bitstrings[i] @ bitstrings[j], 2) == 0:
                 adj_mat[i+k, j+k] = 1
                 if i != j:
+                    adj_mat[i+k, j+k] = 1
                     adj_mat[j+k, i+k] = 1
     
     # Connect input-output edges. Each gets 2^(k-1) edges
