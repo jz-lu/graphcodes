@@ -10,7 +10,7 @@ from _code_platonic import *
 from _code_simple import adj_simple
 from _code_lattice import adj_lattice, adj_3lattice
 from _code_simplex import adj_simplex
-from _code_archimedes import adj_acrhimedes
+#from _code_archimedes import adj_archimedes
 """
 main.py: Main interface for working with graphically generated stabilizer codes.
 
@@ -27,9 +27,12 @@ Basic usage:
 # INPUTS = [10+0, 6+12, 8+24, 2+24, 11+36, 5+48]
 # print(ADJ_MAT)
 
-k = 6
-ADJ_MAT = adj_simplex(k)
-INPUTS = list(range(k))
+#k = 6
+#ADJ_MAT = adj_simplex(k)
+#INPUTS = list(range(k))
+
+ADJ_MAT=adj_platonic('dodecahedron')
+INPUTS = [0]
 
 d = find_distance(ADJ_MAT, INPUTS)
 print(f"The distance of your chosen graph is {d}")

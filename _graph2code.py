@@ -39,11 +39,12 @@ def F2_row_reduce(mat):
         mat[[i, r]] = mat[[r, i]]
 
         for i in range(rows):
-            if i != r:
-                mat[i] = mat[i] ^ mat[r]
+            if i != r and mat[i, lead] == 1:
+                mat[i] ^= mat[r]
         lead += 1
     return mat
 
+'''
 # Deprecated
 def solve_F2_eqn(A, b):
     """
@@ -90,7 +91,7 @@ def solve_F2_eqn(A, b):
 
     return x
 
-"""
+
 def is_stabilizer_signed(g, Stab):
    Check if a given Pauli string is a stabilizer of a stabilizer group.
 
@@ -146,7 +147,7 @@ def is_stabilizer_signed(g, Stab):
    else:
        # print("Sign doesn't match")
        return 2 # sign doesn't match
-"""
+'''
 
 def is_stabilizer(g, Stab):
     """
@@ -176,10 +177,8 @@ def is_stabilizer(g, Stab):
 
     # Test for sign-free solvability, using F2 Gaussian elimination + backsubstitution
     x = F2_row_reduce(np.vstack((Stab, g)))
-    if np.zeros_like(g) in x:
-        return True # matrix is singular => +/-g is a stabilizer
-    else:
-        False
+    return np.any(np.all(np.zeros_like(g) == x, axis=1))
+    # matrix is not full-rank => +/-g is a stabilizer
 
 #adj_mat needs to be in KLS form
 def find_distance(adj_mat, inputs):
@@ -251,7 +250,7 @@ def find_distance(adj_mat, inputs):
                     error[i[k] + n] = j[k] % 2
                 error_swap = np.concatenate([error[n:], error[:n]])
                 if np.all(np.mod(symp_stab.dot(error_swap), 2) == 0):
-                    if is_stabilizer(error, symp_stab):
-                        print(i, j)
+                    if not is_stabilizer(error, symp_stab):
+                        print(i, [['X', 'Z', 'Y'][k - 1] for k in j])
                         return cur_dist
     return -1
