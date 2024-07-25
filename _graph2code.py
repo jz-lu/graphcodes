@@ -251,6 +251,6 @@ def find_distance(adj_mat, inputs):
                 error_swap = np.concatenate([error[n:], error[:n]])
                 if np.all(np.mod(symp_stab.dot(error_swap), 2) == 0):
                     if not is_stabilizer(error, symp_stab):
-                        print(i, [['X', 'Z', 'Y'][k - 1] for k in j])
+                        print(i, ['XZY'[k - 1] for k in j])
                         return cur_dist
     return -1
