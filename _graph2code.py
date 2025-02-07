@@ -254,3 +254,81 @@ def find_distance(adj_mat, inputs):
                         print(i, ['XZY'[k - 1] for k in j])
                         return cur_dist
     return -1
+
+#adj_mat needs to be in KLS form
+def find_distance_with_duplicates(adj_mat, inputs):
+    inputs = np.array(inputs)
+    adj_mat = np.array(adj_mat)
+    outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
+
+    # Input-output adjacency matrix
+    io_adj = adj_mat[np.ix_(inputs, outputs)]
+
+    # Output-output adjacency matrix
+    oo_adj = adj_mat[np.ix_(outputs, outputs)]
+
+    # Row-reduce the IO partial adj mat
+    io_adj = F2_row_reduce(np.array(io_adj, dtype=np.uint8))
+    # pivots = [i.index(1) for i in io_adj]
+    pivots = np.argmax(io_adj == 1, axis=1)
+
+    # Loop over every pair of pivots, and perform a local complementation 
+    # if the pivots are connected.
+    for pidx1, pivot1 in enumerate(pivots):
+        for pidx2, pivot2 in enumerate(pivots):
+            if oo_adj[pivot1, pivot2] == 1: # pivots connected
+                nbr1 = oo_adj[pivot1]
+                nbr2 = oo_adj[pivot2]
+                intersection = nbr1 & nbr2
+                diff1 = nbr1 ^ intersection
+                diff2  = nbr2 ^ intersection
+                for o1 in intersection:
+                    for o2 in diff1:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                for o1 in diff1:
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+
+    # Enumerate physical operators, lowest weight first, and
+    # return the first one we find that is a logical operator.
+    k = len(inputs)
+    n = len(outputs)
+    z_checks = []
+    x_checks = []
+    for i in range(n):
+        if i not in pivots:
+            x_row = np.zeros(n)
+            x_row[i] = 1
+            z_row = oo_adj[i].copy()
+            for j in range(k):
+                if io_adj[j][i] == 1:
+                    x_row[pivots[j]] = 1
+                    z_row = [(z_row[k] + oo_adj[pivots[j]][k]) % 2 for k in range(n)]
+            z_checks += [z_row]
+            x_checks += [x_row]
+    symp_stab = np.zeros((n - k, 2 * n), dtype = int)
+    for i in range(n - k):
+        symp_stab[i][:n] = z_checks[i]
+        symp_stab[i][n:] = x_checks[i]
+    error_set = {''.join(['0'] * (n - k))}
+    for cur_dist in range(1, 10):
+        print(f"Trying distance {cur_dist}")
+        for i in it.combinations(range(n), cur_dist):
+            print(i)
+            for j in it.product(*[range(1, 4)] * cur_dist):
+                error = np.zeros(2 * n, dtype = int)
+                for k in range(cur_dist):
+                    error[i[k]] = j[k] // 2
+                    error[i[k] + n] = j[k] % 2
+                error_swap = np.concatenate([error[n:], error[:n]])
+                syndrome = ''.join([str(np.mod(stab.dot(error_swap), 2)) for stab in symp_stab])
+                if syndrome in error_set:
+                    return 2 * cur_dist - 1
+                else:
+                    error_set.add(syndrome)
+    return -1
