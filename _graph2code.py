@@ -256,7 +256,7 @@ def find_distance(adj_mat, inputs):
     return -1
 
 #adj_mat needs to be in KLS form
-def find_distance_with_duplicates(adj_mat, inputs):
+def find_distance_with_duplicates(adj_mat, inputs, cutoff=5):
     inputs = np.array(inputs)
     adj_mat = np.array(adj_mat)
     outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
@@ -317,7 +317,9 @@ def find_distance_with_duplicates(adj_mat, inputs):
         symp_stab[i][n:] = x_checks[i]
     error_set = {''.join(['0'] * (n - k))}
     for cur_dist in range(1, 10):
-        print(f"Trying distance {cur_dist}")
+        if cur_dist > cutoff:
+            return -1
+        print(f"Trying errors of weight {cur_dist}", flush=True)
         for i in it.combinations(range(n), cur_dist):
             print(i)
             for j in it.product(*[range(1, 4)] * cur_dist):

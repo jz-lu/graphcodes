@@ -23,7 +23,7 @@ def type_nearest_neighbor(n, M):
     # Connect nodes 0..n-1 according to M
     for i in range(n):
         for j in range(i + 1, n):
-            if circ_dist(i, j) <= M:
+            if circ_dist(i, j) <= M and i != j:
                 adj[i][j] = 1
                 adj[j][i] = 1
     
