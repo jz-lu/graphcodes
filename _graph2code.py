@@ -256,7 +256,7 @@ def find_distance(adj_mat, inputs):
     return -1
 
 #adj_mat needs to be in KLS form
-def find_distance_with_duplicates(adj_mat, inputs, cutoff=5):
+def find_distance_or_check_weight(adj_mat, inputs, cutoff=5):
     inputs = np.array(inputs)
     adj_mat = np.array(adj_mat)
     outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
@@ -333,4 +333,94 @@ def find_distance_with_duplicates(adj_mat, inputs, cutoff=5):
                     return 2 * cur_dist - 1
                 else:
                     error_set.add(syndrome)
+    return -1
+
+def fast_string(a):
+    ascii_bytes = (a + 48).astype(np.uint8)
+    return ascii_bytes.tobytes().decode('ascii')
+
+#adj_mat needs to be in KLS form
+def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
+    inputs = np.array(inputs)
+    adj_mat = np.array(adj_mat)
+    outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
+
+    # Input-output adjacency matrix
+    io_adj = adj_mat[np.ix_(inputs, outputs)]
+
+    # Output-output adjacency matrix
+    oo_adj = adj_mat[np.ix_(outputs, outputs)]
+
+    # Row-reduce the IO partial adj mat
+    io_adj = F2_row_reduce(np.array(io_adj, dtype=np.uint8))
+    oi_adj = io_adj.T
+    # pivots = [i.index(1) for i in io_adj]
+    pivots = np.argmax(io_adj == 1, axis=1)
+
+    # Loop over every pair of pivots, and perform a local complementation
+    # if the pivots are connected.
+    for pidx1, pivot1 in enumerate(pivots):
+        for pidx2, pivot2 in enumerate(pivots):
+            if oo_adj[pivot1, pivot2] == 1: # pivots connected
+                nbr1 = oo_adj[pivot1]
+                nbr2 = oo_adj[pivot2]
+                intersection = nbr1 & nbr2
+                diff1 = nbr1 ^ intersection
+                diff2  = nbr2 ^ intersection
+                for o1 in intersection:
+                    for o2 in diff1:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+                for o1 in diff1:
+                    for o2 in diff2:
+                        oo_adj[o1, o2] ^= 1
+                        oo_adj[o2, o1] ^= 1
+
+    # Enumerate physical operators, lowest weight first, and
+    # return the first one we find that is a logical operator.
+    k = len(inputs)
+    n = len(outputs)
+    images = np.zeros((2 ** k - 1, n), dtype = int)
+    for i, c in enumerate(it.product(*[range(2)] * k)):
+        if i == 0:
+            continue
+        for j in range(k):
+            if c[j] == 1:
+                images[i - 1] += io_adj[j]
+    images = images % 2
+    old_dict = {}
+    error_set = {}
+    for cur_dist in range(10):
+        if cur_dist > cutoff:
+            return -1
+        print(f"Trying errors of weight {cur_dist}", flush=True)
+        for i in it.combinations(range(n), cur_dist):
+            print(i)
+            for j in it.product(*[range(1, 4)] * cur_dist):
+                zso = np.zeros(n, dtype = int)
+                zsi = np.zeros(k, dtype = int)
+                for l in range(cur_dist):
+                    zso[i[l]] += j[l] // 2
+                    if j[l] % 2 == 1:
+                        zsi += oi_adj[i[l]]
+                        zso += oo_adj[i[l]]
+                zsi = zsi % 2
+                zso = zso % 2
+                base_key = fast_string(zso)
+                value = fast_string(zsi)
+                if base_key in error_set and error_set[base_key] != value:
+                    if base_key in old_dict and old_dict[base_key] != value:
+                        return 2 * cur_dist - 1
+                    return 2 * cur_dist
+                for l in images:
+                    test = fast_string((zso + l) % 2)
+                    if test in error_set:
+                        if test in old_dict:
+                            return 2 * cur_dist - 1
+                        return 2 * cur_dist
+                error_set[base_key] = value
+        old_dict = error_set.copy()
     return -1

@@ -25,10 +25,8 @@ Basic usage:
 (4) Run and see what the distance is!
 """
 
-n = 16
+ADJ_MAT = np.load('../cookie_code.npy')
+INPUTS = range(6)
 
-ADJ_MAT = type_nearest_neighbor(n, math.ceil(math.sqrt(n)))
-INPUTS = [n]
-
-d = find_distance(ADJ_MAT, INPUTS)
+d = find_distance_with_hash_table(ADJ_MAT, INPUTS)
 print(f"The distance of your chosen graph is at least {d}")
