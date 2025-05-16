@@ -2,6 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import itertools as it
 import numpy as np
+tobytes = np.ndarray.tobytes
 """
 _graph2code.py: find the distance of a code corresponding to a graph
 
@@ -335,14 +336,10 @@ def find_distance_or_check_weight(adj_mat, inputs, cutoff=5):
                     error_set.add(syndrome)
     return -1
 
-def fast_string(a):
-    ascii_bytes = (a + 48).astype(np.uint8)
-    return ascii_bytes.tobytes().decode('ascii')
-
 #adj_mat needs to be in KLS form
 def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
     inputs = np.array(inputs)
-    adj_mat = np.array(adj_mat)
+    adj_mat = np.array(adj_mat, np.uint8)
     outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
 
     # Input-output adjacency matrix
@@ -379,48 +376,41 @@ def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
                         oo_adj[o1, o2] ^= 1
                         oo_adj[o2, o1] ^= 1
 
-    # Enumerate physical operators, lowest weight first, and
-    # return the first one we find that is a logical operator.
+    # Enumerate physical operators, lowest weight first,
+    # canonicalize them, removing X's and Y's and operations
+    # on pivots, and then store the remaining physical Z's as
+    # a key and the logical operators as the value. If two
+    # identical keys ever have different values, we have
+    # found a logical operator.
     k = len(inputs)
     n = len(outputs)
-    images = np.zeros((2 ** k - 1, n), dtype = int)
-    for i, c in enumerate(it.product(*[range(2)] * k)):
-        if i == 0:
-            continue
-        for j in range(k):
-            if c[j] == 1:
-                images[i - 1] += io_adj[j]
-    images = images % 2
     old_dict = {}
     error_set = {}
-    for cur_dist in range(10):
+    for cur_dist in range(0, 10):
         if cur_dist > cutoff:
             return -1
         print(f"Trying errors of weight {cur_dist}", flush=True)
-        for i in it.combinations(range(n), cur_dist):
+        paulis = np.array(list(it.product((1, 2, 3), repeat = cur_dist)), np.uint8)
+        for i in it.combinations(np.arange(n), cur_dist):
+            i = np.array(i, np.int64)
             print(i)
-            for j in it.product(*[range(1, 4)] * cur_dist):
-                zso = np.zeros(n, dtype = int)
-                zsi = np.zeros(k, dtype = int)
-                for l in range(cur_dist):
-                    zso[i[l]] += j[l] // 2
-                    if j[l] % 2 == 1:
-                        zsi += oi_adj[i[l]]
-                        zso += oo_adj[i[l]]
-                zsi = zsi % 2
-                zso = zso % 2
-                base_key = fast_string(zso)
-                value = fast_string(zsi)
-                if base_key in error_set and error_set[base_key] != value:
-                    if base_key in old_dict and old_dict[base_key] != value:
+            # this explodes x's and y's. after this, each row contains z's from x's and y's
+            pauli_oo = paulis @ oo_adj[i] & 1
+            # this adds z's from z's and y's
+            pauli_oo[:, i] ^= paulis >> 1
+            # this computes z's on inputs from x's and y's on outputs
+            pauli_oi = paulis @ oi_adj[i] & 1
+            # this computes which x's on inputs must be added to cancel z's on pivots
+            all_xs = pauli_oo[:, pivots]
+            # this applies the x's from the previous row
+            pauli_oo ^= all_xs @ io_adj & 1
+            for key, val1, val2 in zip(pauli_oo, pauli_oi, all_xs):
+                key = tobytes(key)
+                val = tobytes(val1) + tobytes(val2)
+                if key in error_set and error_set[key] != val:
+                    if key in old_dict and old_dict[key] != val:
                         return 2 * cur_dist - 1
                     return 2 * cur_dist
-                for l in images:
-                    test = fast_string((zso + l) % 2)
-                    if test in error_set:
-                        if test in old_dict:
-                            return 2 * cur_dist - 1
-                        return 2 * cur_dist
-                error_set[base_key] = value
+                error_set[key] = val
         old_dict = error_set.copy()
     return -1
