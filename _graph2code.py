@@ -341,6 +341,8 @@ def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
     inputs = np.array(inputs)
     adj_mat = np.array(adj_mat, np.uint8)
     outputs = np.setdiff1d(np.arange(len(adj_mat)), inputs)
+    k = len(inputs)
+    n = len(outputs)
 
     # Input-output adjacency matrix
     io_adj = adj_mat[np.ix_(inputs, outputs)]
@@ -376,37 +378,45 @@ def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
                         oo_adj[o1, o2] ^= 1
                         oo_adj[o2, o1] ^= 1
 
+    zo = np.identity(n, dtype = np.uint8)
+    xo = np.zeros_like(zo)
+    zizx = np.zeros((n, 2 * k), dtype = np.uint8)
+    xizx = np.zeros((n, 2 * k), dtype = np.uint8)
+    
+    for i, p in enumerate(pivots):
+        zo[p] ^= io_adj[i]
+        zizx[p, i + k] = 1
+    for i in range(n):
+        xizx[i, :k] ^= oi_adj[i]
+        for j in range(n):
+            if oo_adj[i, j]:
+                xo[i] ^= zo[j]
+                xizx[i, k:] ^= zizx[j, k:]
+    
+    non_pivots = np.delete(np.arange(n), pivots)
+    zo = zo[:, non_pivots]
+    xo = xo[:, non_pivots]
+
     # Enumerate physical operators, lowest weight first,
     # canonicalize them, removing X's and Y's and operations
     # on pivots, and then store the remaining physical Z's as
     # a key and the logical operators as the value. If two
     # identical keys ever have different values, we have
     # found a logical operator.
-    k = len(inputs)
-    n = len(outputs)
     old_dict = {}
     error_set = {}
-    for cur_dist in range(0, 10):
+    for cur_dist in range(10):
         if cur_dist > cutoff:
             return -1
         print(f"Trying errors of weight {cur_dist}", flush=True)
         paulis = np.array(list(it.product((1, 2, 3), repeat = cur_dist)), np.uint8)
-        for i in it.combinations(np.arange(n), cur_dist):
-            i = np.array(i, np.int64)
-            print(i)
-            # this explodes x's and y's. after this, each row contains z's from x's and y's
-            pauli_oo = paulis @ oo_adj[i] & 1
-            # this adds z's from z's and y's
-            pauli_oo[:, i] ^= paulis >> 1
-            # this computes z's on inputs from x's and y's on outputs
-            pauli_oi = paulis @ oi_adj[i] & 1
-            # this computes which x's on inputs must be added to cancel z's on pivots
-            all_xs = pauli_oo[:, pivots]
-            # this applies the x's from the previous row
-            pauli_oo ^= all_xs @ io_adj & 1
-            for key, val1, val2 in zip(pauli_oo, pauli_oi, all_xs):
+        paulix = paulis & 1
+        pauliz = paulis >> 1
+        for i in np.array(list(it.combinations(np.arange(n), cur_dist)), np.int64):
+            for key, val in zip(pauliz @ zo[i] & 1 ^ paulix @ xo[i] & 1,
+                                pauliz @ zizx[i] & 1 ^ paulix @ xizx[i] & 1):
                 key = tobytes(key)
-                val = tobytes(val1) + tobytes(val2)
+                val = tobytes(val)
                 if key in error_set and error_set[key] != val:
                     if key in old_dict and old_dict[key] != val:
                         return 2 * cur_dist - 1
