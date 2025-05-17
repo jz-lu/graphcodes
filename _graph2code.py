@@ -412,11 +412,12 @@ def find_distance_with_hash_table(adj_mat, inputs, cutoff = 6):
         paulis = np.array(list(it.product((1, 2, 3), repeat = cur_dist)), np.uint8)
         paulix = paulis & 1
         pauliz = paulis >> 1
-        for i in np.array(list(it.combinations(np.arange(n), cur_dist)), np.int64):
-            for key, val in zip(pauliz @ zo[i] & 1 ^ paulix @ xo[i] & 1,
-                                pauliz @ zizx[i] & 1 ^ paulix @ xizx[i] & 1):
-                key = tobytes(key)
-                val = tobytes(val)
+        combs = np.array(list(it.combinations(np.arange(n), cur_dist)), np.int64)
+        for i in combs:
+            keys = (pauliz @ zo[i] ^ paulix @ xo[i]) & 1
+            vals = (pauliz @ zizx[i] ^ paulix @ xizx[i]) & 1
+            for key, val in zip(keys, vals):
+                key, val = tobytes(key), tobytes(val)
                 if key in error_set and error_set[key] != val:
                     if key in old_dict and old_dict[key] != val:
                         return 2 * cur_dist - 1
