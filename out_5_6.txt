@@ -1,0 +1,15 @@
+Hello World
+[[0 1 0 ... 0 0 0]
+ [1 0 1 ... 0 0 0]
+ [0 1 0 ... 0 0 0]
+ ...
+ [0 0 0 ... 0 1 0]
+ [0 0 0 ... 1 0 0]
+ [0 0 0 ... 0 0 0]]
+Trying distance 1
+Trying distance 2
+Trying distance 3
+Trying distance 4
+(35, 37, 49, 50) (1, 2, 3, 1)
+The distance of your chosen graph is 4
+Done!
