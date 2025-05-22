@@ -129,9 +129,11 @@ hz = np.hstack((BT,AT))
 
 HX_BB = np.load("HX_BB.npy")
 HZ_BB = np.load("HZ_BB.npy")
+hx = HX_BB
+hz = HZ_BB
 
 # qcode=css_code(hx,hz)
-qcode = css_code(HX_BB, HZ_BB)
+qcode = css_code(hx, hz)
 print('Testing CSS code...')
 qcode.test()
 print('Done')
