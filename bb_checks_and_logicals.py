@@ -33,6 +33,8 @@ for i in range(12):
 
 zchecks = row_reduce_mod2(zchecks)
 xchecks = row_reduce_mod2(xchecks)
+np.save("HZ_BB.npy", zchecks)
+np.save("HX_BB.npy", xchecks)
 zcandidates = null_space_mod2(xchecks)
 xcandidates = null_space_mod2(zchecks)
 zlogicals = remove_subspace(zcandidates, zchecks)

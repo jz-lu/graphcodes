@@ -1,61 +1,101 @@
+# Taken from Bravyi's BB code paper
+# Commented through by ChatGPT-4o
+
 import numpy as np
 from mip import Model, xsum, minimize, BINARY
-from bposd.css import css_code
+from bposd.css import css_code  # Module for constructing CSS-type stabilizer codes
 
-# computes the minimum Hamming weight of a binary vector x such that 
-# stab @ x = 0 mod 2
-# logicOp @ x = 1 mod 2
-# here stab is a binary matrix and logicOp is a binary vector
-def distance_test(stab,logicOp):
-	# number of qubits
-	n = stab.shape[1]
-	# number of stabilizers
-	m = stab.shape[0]
+# The function `distance_test` computes the minimum Hamming weight of a binary vector x such that:
+#   * stab @ x = 0 (mod 2)   --> x is orthogonal to every row of the stabilizer matrix
+#   * logicOp @ x = 1 (mod 2) --> x has odd overlap with the logical operator
+# Inputs:
+#   stab    : numpy array of shape (m, n), binary stabilizer generator matrix
+#   logicOp : binary vector of length n (scipy sparse array or numpy), logical operator support
+# Output:
+#   Returns the distance (minimum weight) of the logical operator in the code
 
-	# maximum stabilizer weight
-	wstab = np.max([np.sum(stab[i,:]) for i in range(m)])
-	# weight of the logical operator
-	wlog = logicOp.getnnz()
-	# how many slack variables are needed to express orthogonality constraints modulo two
-	num_anc_stab = int(np.ceil(np.log2(wstab)))
-	num_anc_logical = int(np.ceil(np.log2(wlog)))
-	# total number of variables
-	num_var = n + m*num_anc_stab + num_anc_logical
+def distance_test(stab, logicOp):
+    # Number of physical qubits = number of columns of the stabilizer matrix
+    n = stab.shape[1]
+    # Number of stabilizer generators = number of rows
+    m = stab.shape[0]
 
-	model = Model()
-	model.verbose = 0
-	x = [model.add_var(var_type=BINARY) for i in range(num_var)]
-	model.objective = minimize(xsum(x[i] for i in range(n)))
+    # Maximum weight (number of ones) among all stabilizer rows
+    wstab = np.max([np.sum(stab[i, :]) for i in range(m)])
+    # Weight of the logical operator (# of nonzero entries). getnnz() works if logicOp is sparse.
+    wlog = logicOp.getnnz()
 
-	# orthogonality to rows of stab constraints
-	for row in range(m):
-		weight = [0]*num_var
-		supp = np.nonzero(stab[row,:])[0]
-		for q in supp:
-			weight[q] = 1
-		cnt = 1
-		for q in range(num_anc_stab):
-			weight[n + row*num_anc_stab +q] = -(1<<cnt)
-			cnt+=1
-		model+= xsum(weight[i] * x[i] for i in range(num_var)) == 0
+    # To enforce parity constraints (mod 2) via linear constraints, we introduce slack bits.
+    # We need enough bits to represent up to wstab or wlog in binary, hence ceil(log2(weight)).
+    num_anc_stab = int(np.ceil(np.log2(wstab)))       # ancilla bits per stabilizer row
+    num_anc_logical = int(np.ceil(np.log2(wlog)))    # ancilla bits for the logical constraint
 
-	# odd overlap with logicOp constraint
-	supp = np.nonzero(logicOp)[0]
-	weight = [0]*num_var
-	for q in supp:
-		weight[q] = 1
-	cnt = 1
-	for q in range(num_anc_logical):
-			weight[n + m*num_anc_stab +q] = -(1<<cnt)
-			cnt+=1
-	model+= xsum(weight[i] * x[i] for i in range(num_var)) == 1
+    # Total number of binary decision variables:
+    #   - n qubit-selection bits x[0..n-1]
+    #   - m * num_anc_stab slack bits for stabilizer constraints
+    #   - num_anc_logical slack bits for the logical constraint
+    num_var = n + m * num_anc_stab + num_anc_logical
 
-	model.optimize()
+    # Create a Mixed-Integer Programming model
+    model = Model()
+    model.verbose = 0  # suppress solver output
 
-	opt_val = sum([x[i].x for i in range(n)])
-	return int(opt_val)
+    # Create binary variables x[i] for i=0..num_var-1
+    x = [model.add_var(var_type=BINARY) for i in range(num_var)]
 
+    # Objective: minimize the Hamming weight of the qubit vector --> sum x[0..n-1]
+    model.objective = minimize(xsum(x[i] for i in range(n)))
 
+    # --- Constraints for orthogonality to each stabilizer row (mod 2) ---
+    for row in range(m):
+        # Build coefficient vector for the linear constraint
+        weight = [0] * num_var
+        # Support of the row: indices where stab[row, :] == 1
+        supp = np.nonzero(stab[row, :])[0]
+        # For each qubit bit in that support, add +1 * x[q]
+        for q in supp:
+            weight[q] = 1
+
+        # Now encode parity-mod-2 using slack bits:
+        # We want sum_{q in supp} x[q] ≡ 0 (mod 2).
+        # Introduce ancilla binary variables representing the binary expansion of the sum.
+        # We enforce: sum(supp bits) - sum(2^k * ancilla_k) == 0.
+        cnt = 1
+        for k in range(num_anc_stab):
+            idx = n + row * num_anc_stab + k
+            weight[idx] = -(1 << cnt)  # subtract 2^cnt * x[idx]
+            cnt += 1
+
+        # Add equality constraint
+        model += xsum(weight[i] * x[i] for i in range(num_var)) == 0
+
+    # --- Constraint for odd overlap with the logical operator ---
+    # Support of logicOp: qubits touched by logical operator
+    supp = np.nonzero(logicOp)[0]
+    weight = [0] * num_var
+    for q in supp:
+        weight[q] = 1
+
+    # Similar binary encoding: enforce sum(supp bits) ≡ 1 (mod 2)
+    cnt = 1
+    base_idx = n + m * num_anc_stab
+    for k in range(num_anc_logical):
+        weight[base_idx + k] = -(1 << cnt)
+        cnt += 1
+
+    # Add equality constraint: sum == 1
+    model += xsum(weight[i] * x[i] for i in range(num_var)) == 1
+
+    # Solve the MIP
+    model.optimize()
+
+    # Extract the optimal weight: sum of qubit bits x[0..n-1]
+    opt_val = sum(int(x[i].x) for i in range(n))
+    return int(opt_val)
+
+# Note:
+# - `mip` is the Python-MIP package for mixed-integer programming (Model, xsum, minimize, BINARY).
+# - CSS codes (Calderbank-Shor-Steane) are accessed via `bposd.css.css_code`, but not shown in this snippet.
 
 # [[144,12,12]]
 ell,m = 12,6
@@ -86,7 +126,11 @@ BT = np.transpose(B)
 hx = np.hstack((A,B))
 hz = np.hstack((BT,AT))
 
-qcode=css_code(hx,hz)
+HX_BB = np.load("HX_BB.npy")
+HZ_BB = np.load("HZ_BB.npy")
+
+# qcode=css_code(hx,hz)
+qcode = css_code(HX_BB, HZ_BB)
 print('Testing CSS code...')
 qcode.test()
 print('Done')
