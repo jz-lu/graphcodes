@@ -31,8 +31,8 @@ for i in range(12):
         else:
             xchecks = np.append(xchecks, [row], axis = 0)
 
-zchecks = row_reduce_mod2(zchecks)
-xchecks = row_reduce_mod2(xchecks)
+# zchecks = row_reduce_mod2(zchecks)
+# xchecks = row_reduce_mod2(xchecks)
 np.save("HZ_BB.npy", zchecks)
 np.save("HX_BB.npy", xchecks)
 zcandidates = null_space_mod2(xchecks)
