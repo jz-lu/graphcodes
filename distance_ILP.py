@@ -91,7 +91,8 @@ def distance_test(stab, logicOp):
 
     # Extract the optimal weight: sum of qubit bits x[0..n-1]
     opt_val = sum(int(x[i].x) for i in range(n))
-    return int(opt_val)
+    sol = np.array([int(x[i].x) for i in range(n)], dtype=int)
+    return int(opt_val), sol
 
 # Note:
 # - `mip` is the Python-MIP package for mixed-integer programming (Model, xsum, minimize, BINARY).
@@ -146,8 +147,14 @@ print('Computing code distance...')
 # Then the code distance for Z-type logical operators is dZ = min(w_1,…,w_k).
 d = n
 for i in range(k):
-	w = distance_test(hx,lx[i,:])
-	print('Logical qubit=',i,'Distance=',w)
+	# w = distance_test(hx,lx[i,:])
+	# print('Logical qubit=',i,'Distance=',w)
+	w, sol = distance_test(hx, lx[i,:])
+	print("  found weight‐", w, "with support", np.nonzero(sol)[0])
+
+	# now check consistency by brute force:
+	print("  hx @ sol mod2 =", (hx.dot(sol) % 2))
+	print("  lx[i] @ sol mod2 =", (lx[i,:].dot(sol) % 2))
 	d = min(d,w)
 
 print('Code parameters: n,k,d=',n,k,d)
