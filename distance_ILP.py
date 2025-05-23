@@ -72,6 +72,8 @@ def distance_test(stab, logicOp):
     # --- Constraint for odd overlap with the logical operator ---
     # Support of logicOp: qubits touched by logical operator
     supp = np.nonzero(logicOp)[0]
+    print("Logical Supp =", supp)
+    print("Logical op =", logicOp)
     weight = [0] * num_var
     for q in supp:
         weight[q] = 1
