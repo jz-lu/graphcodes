@@ -71,9 +71,7 @@ def distance_test(stab, logicOp):
 
     # --- Constraint for odd overlap with the logical operator ---
     # Support of logicOp: qubits touched by logical operator
-    supp = np.nonzero(logicOp)[0]
-    print("Logical Supp =", supp)
-    print("Logical op =", logicOp)
+    supp = np.nonzero(logicOp)[1]
     weight = [0] * num_var
     for q in supp:
         weight[q] = 1
@@ -153,7 +151,6 @@ print('Computing code distance...')
 # and an odd overlap with logical-X operator on the i-th logical qubit. Let w_i be the optimal value of this ILP. 
 # Then the code distance for Z-type logical operators is dZ = min(w_1,…,w_k).
 d = n
-k = 1
 for i in range(k):
 	# w = distance_test(hx,lx[i,:])
 	# print('Logical qubit=',i,'Distance=',w)
