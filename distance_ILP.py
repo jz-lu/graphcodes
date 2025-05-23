@@ -92,7 +92,9 @@ def distance_test(stab, logicOp):
     # Extract the optimal weight: sum of qubit bits x[0..n-1]
     opt_val = sum(int(x[i].x) for i in range(n))
     sol = np.array([int(x[i].x) for i in range(n)], dtype=int)
-    print(sum(int(x[i].x) * weight[i] for i in range(num_var)))
+    print("Weight =", weight)
+    print("Constraint value =", sum(int(x[i].x) * weight[i] for i in range(num_var)))
+    print("Logical overlap =", sum(int(x[i].x) * weight[i] for i in range(n)))
     return int(opt_val), sol
 
 # Note:
@@ -149,6 +151,7 @@ print('Computing code distance...')
 # and an odd overlap with logical-X operator on the i-th logical qubit. Let w_i be the optimal value of this ILP. 
 # Then the code distance for Z-type logical operators is dZ = min(w_1,…,w_k).
 d = n
+k = 1
 for i in range(k):
 	# w = distance_test(hx,lx[i,:])
 	# print('Logical qubit=',i,'Distance=',w)
