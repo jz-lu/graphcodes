@@ -84,7 +84,7 @@ def distance_test(stab, logicOp):
         cnt += 1
 
     # Add equality constraint: sum == 1
-    model += xsum(weight[i] * x[i] for i in range(num_var)) == 1
+    model += (xsum(weight[i] * x[i] for i in range(num_var)) == 1)
 
     # Solve the MIP
     model.optimize()
@@ -92,6 +92,7 @@ def distance_test(stab, logicOp):
     # Extract the optimal weight: sum of qubit bits x[0..n-1]
     opt_val = sum(int(x[i].x) for i in range(n))
     sol = np.array([int(x[i].x) for i in range(n)], dtype=int)
+    print(sum(int(x[i].x) * weight[i] for i in range(num_var)))
     return int(opt_val), sol
 
 # Note:
